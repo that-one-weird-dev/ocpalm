@@ -52,14 +52,28 @@ impl<
     }
 
     pub fn set(&self, handle: &ArenaHandle<T>, new_value: T) {
+        if handle.is_null() {
+            eprintln!("Received null handle, skipping operation (set)");
+            return
+        }
+
         self.data.borrow_mut()[handle.index as usize] = new_value;
     }
 
     pub fn get(&self, handle: &ArenaHandle<T>) -> T {
+        if handle.is_null() {
+            eprintln!("Received null handle, skipping operation (get)");
+            return T::default()
+        }
+
         self.data.borrow()[handle.index as usize]
     }
 
     pub fn get_mut(&self, handle: &ArenaHandle<T>) -> &mut T {
+        if handle.is_null() {
+            panic!("Received null handle, cannot proceed (get_mut)")
+        }
+
         // FIXME: Implement check for memory safety
         unsafe {
             (&self.data.borrow()[handle.index as usize] as *const T as *mut T).as_mut().unwrap()
@@ -98,6 +112,10 @@ impl<T: Default + Copy> ArenaHandle<T> {
             index,
             _phantom: PhantomData::default(),
         }
+    }
+
+    pub fn is_null(&self) -> bool {
+        self.index == std::u32::MAX
     }
 
     pub fn get<'a>(&self, arena: &'a Arena<T>) -> T {

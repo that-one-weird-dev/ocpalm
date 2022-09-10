@@ -57,7 +57,9 @@ mod tests {
         let mut octree = Octree::<u16>::new(8);
 
         octree.set(10, 20, 30, 56);
+        octree.set(0, 0, 0, 10);
 
+        assert!(octree.get(0, 0, 0) == 10);
         assert!(octree.get(10, 20, 30) == 56);
     }
 }
