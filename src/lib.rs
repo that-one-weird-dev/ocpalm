@@ -14,14 +14,14 @@ mod tests {
 
     #[test]
     fn arena_store_retrive() {
-        let mut arena = Arena::<i32>::new();
+        let arena = Arena::<i32>::new();
 
         let handle = arena.store(10);
         arena.store(20);
         let handle2 = arena.store(30);
 
-        assert!(*handle.get(&arena) == 10);
-        assert!(*handle2.get(&arena) == 30);
+        assert!(handle.get(&arena) == 10);
+        assert!(handle2.get(&arena) == 30);
     }
 
     #[test]
@@ -35,7 +35,7 @@ mod tests {
         handle2.remove(&mut arena);
         handle.remove(&mut arena);
 
-        assert!(*handle3.get(&arena) == 30)
+        assert!(handle3.get(&arena) == 30)
     }
 
     #[test]
@@ -48,13 +48,13 @@ mod tests {
 
         let handle3 = arena.store(30);
 
-        assert!(*handle3.get(&arena) == 30);
+        assert!(handle3.get(&arena) == 30);
         assert!(handle3.index == 0);
     }
 
     #[test]
     fn octree_store_retrive() {
-        let mut octree = Octree::<u16>::new();
+        let mut octree = Octree::<u16>::new(8);
 
         octree.set(10, 20, 30, 56);
 

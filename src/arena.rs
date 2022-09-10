@@ -1,15 +1,15 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, cell::RefCell};
 
 use crate::utils::first_zero_position;
 
 
 pub struct Arena<
-    T,
+    T: Copy,
     const SIZE: usize = 1024,
     const FREE_SIZE: usize = 128
 > {
-    data: [T; SIZE],
-    free_space: [u8; FREE_SIZE],
+    data: RefCell<[T; SIZE]>,
+    free_space: RefCell<[u8; FREE_SIZE]>,
 }
 
 impl<
@@ -20,16 +20,16 @@ impl<
 
     pub fn new() -> Self {
         Self {
-            data: [T::default(); SIZE],
-            free_space: [0; FREE_SIZE]
+            data: RefCell::new([T::default(); SIZE]),
+            free_space: RefCell::new([0; FREE_SIZE]),
         }
     }
 
-    pub fn store(&mut self, value: T) -> ArenaHandle<T> {
+    pub fn store(&self, value: T) -> ArenaHandle<T> {
         let mut found = false;
         let mut first_free = 0;
 
-        for (i, slot) in self.free_space.iter_mut().enumerate() {
+        for (i, slot) in self.free_space.borrow_mut().iter_mut().enumerate() {
             if *slot == 255 { continue }
 
             let pos = first_zero_position(*slot);
@@ -51,36 +51,45 @@ impl<
         handle
     }
 
-    pub fn set(&mut self, handle: &ArenaHandle<T>, new_value: T) {
-        self.data[handle.index as usize] = new_value;
+    pub fn set(&self, handle: &ArenaHandle<T>, new_value: T) {
+        self.data.borrow_mut()[handle.index as usize] = new_value;
     }
 
-    pub fn get(&self, handle: &ArenaHandle<T>) -> &T {
-        &self.data[handle.index as usize]
+    pub fn get(&self, handle: &ArenaHandle<T>) -> T {
+        self.data.borrow()[handle.index as usize]
     }
 
     pub fn get_mut(&self, handle: &ArenaHandle<T>) -> &mut T {
         // FIXME: Implement check for memory safety
         unsafe {
-            (&self.data[handle.index as usize] as *const T as *mut T).as_mut().unwrap()
+            (&self.data.borrow()[handle.index as usize] as *const T as *mut T).as_mut().unwrap()
         }
     }
 
-    pub fn remove(&mut self, handle: ArenaHandle<T>) {
+    pub fn remove(&self, handle: ArenaHandle<T>) {
         let slot = handle.index / 8;
         let pos = handle.index % 8;
 
-        self.free_space[slot as usize] -= 2u8.pow(pos as u32);
+        self.free_space.borrow_mut()[slot as usize] -= 2u8.pow(pos as u32);
 
-        self.data[handle.index as usize] = T::default();
+        self.data.borrow_mut()[handle.index as usize] = T::default();
     }
 }
 
 #[repr(C)]
-#[derive(Default, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct ArenaHandle<T> {
     pub(crate) index: u32,
     _phantom: PhantomData<T>,
+}
+
+impl<T> Default for ArenaHandle<T> {
+    fn default() -> Self {
+        Self {
+            index: std::u32::MAX,
+            _phantom: Default::default(),
+        }
+    }
 }
 
 impl<T: Default + Copy> ArenaHandle<T> {
@@ -91,7 +100,7 @@ impl<T: Default + Copy> ArenaHandle<T> {
         }
     }
 
-    pub fn get<'a>(&self, arena: &'a Arena<T>) -> &'a T {
+    pub fn get<'a>(&self, arena: &'a Arena<T>) -> T {
         arena.get(self)
     }
 

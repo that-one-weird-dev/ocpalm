@@ -2,10 +2,10 @@ use crate::arena::{Arena, ArenaHandle};
 
 
 #[repr(C)]
-pub struct Octree<T> {
+pub struct Octree<T: Copy> {
     arena: Arena<OctreeNode<T>>,
     root: ArenaHandle<OctreeNode<T>>,
-    radius: i32,
+    max_depth: u32,
 }
 
 #[repr(C)]
@@ -27,35 +27,70 @@ impl<T: Default> Default for OctreeNode<T> {
 }
 
 impl<T: Default + Copy + PartialEq> Octree<T> {
-    pub fn new(size_radius: usize) -> Self {
-        let mut arena = Arena::new();
+    pub fn new(max_depth: u32) -> Self {
+        let arena = Arena::new();
 
         Self {
             root: arena.store(OctreeNode::default()),
             arena,
-            radius: size_radius as i32,
+            max_depth,
         }
     }
 
     pub fn set(&mut self, x: i32, y: i32, z: i32, value: T) {
-        todo!()
-        // if x > self.radius || x < -self.radius
-        // || y > self.radius || y < -self.radius
-        // || z > self.radius || z < -self.radius {
-        //     return;
-        // }
+        // TODO: Assert coords are inside the bounds
 
-        // let mut current_node = self.root.get_mut(&self.arena);
-        // let mut i = 0;
+        // 2^(max_depth - 1) / 2
+        let mut half_size = 1 << (self.max_depth - 2);
 
-        // loop {
-        //     if current_node.data == value { break }
+        let mut current_node = self.root.get_mut(&self.arena);
 
-        //     i += 1;
-        // }
+        let mut middle_x = 0;
+        let mut middle_y = 0;
+        let mut middle_z = 0;
+
+        loop {
+            let xside = if x < middle_x { -1 } else { 1 };
+            let yside = if y < middle_y { -1 } else { 1 };
+            let zside = if z < middle_z { -1 } else { 1 };
+
+            if current_node.leaf {
+                current_node.subdivide(&self);
+            }
+
+            current_node = current_node.children[((xside + 1) / 2 + (yside + 1) * 2 + (zside + 1)) as usize].get_mut(&self.arena);
+
+            if half_size == 1 { break }
+
+            half_size /= 2;
+
+            middle_x += half_size * xside;
+            middle_y += half_size * yside;
+            middle_z += half_size * zside;
+        }
+
+        current_node.data = value;
     }
 
-    pub fn get(&mut self, x: i32, y: i32, z: i32) -> T {
+    pub fn get(&mut self, _x: i32, _y: i32, _z: i32) -> T {
         todo!()
+    }
+}
+
+impl<T: Default + Copy> OctreeNode<T> {
+    fn new(value: T) -> Self {
+        Self {
+            leaf: true,
+            children: Default::default(),
+            data: value,
+        }
+    }
+
+    fn subdivide(&mut self, octree: &Octree<T>) {
+        self.leaf = false;
+
+        for i in 0..8 {
+            self.children[i] = octree.arena.store(OctreeNode::new(self.data));
+        }
     }
 }
