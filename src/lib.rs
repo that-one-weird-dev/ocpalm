@@ -1,9 +1,9 @@
+pub mod octree;
 pub mod arena;
 mod utils;
 
-pub struct Octree {
-}
 
+#[cfg(test)]
 mod tests {
     use crate::{utils::first_zero_position, arena::Arena};
 

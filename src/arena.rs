@@ -44,7 +44,7 @@ impl<
 
         if !found { todo!("Increment space") }
 
-        let handle = ArenaHandle::new(first_free);
+        let handle = ArenaHandle::new(first_free as u32);
 
         self.set(&handle, value);
 
@@ -52,34 +52,35 @@ impl<
     }
 
     pub fn set(&mut self, handle: &ArenaHandle<T>, new_value: T) {
-        self.data[handle.index] = new_value;
+        self.data[handle.index as usize] = new_value;
     }
 
     pub fn get(&self, handle: &ArenaHandle<T>) -> &T {
-        &self.data[handle.index]
+        &self.data[handle.index as usize]
     }
 
     pub fn get_mut(&mut self, handle: &ArenaHandle<T>) -> &mut T {
-        &mut self.data[handle.index]
+        &mut self.data[handle.index as usize]
     }
 
     pub fn remove(&mut self, handle: ArenaHandle<T>) {
         let slot = handle.index / 8;
         let pos = handle.index % 8;
 
-        self.free_space[slot] -= 2u8.pow(pos as u32);
+        self.free_space[slot as usize] -= 2u8.pow(pos as u32);
 
-        self.data[handle.index] = T::default();
+        self.data[handle.index as usize] = T::default();
     }
 }
 
+#[repr(C)]
 pub struct ArenaHandle<T> {
-    pub(crate) index: usize,
+    pub(crate) index: u32,
     _phantom: PhantomData<T>,
 }
 
 impl<T: Default + Copy> ArenaHandle<T> {
-    fn new(index: usize) -> Self {
+    fn new(index: u32) -> Self {
         Self {
             index,
             _phantom: PhantomData::default(),
