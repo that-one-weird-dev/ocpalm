@@ -59,8 +59,11 @@ impl<
         &self.data[handle.index as usize]
     }
 
-    pub fn get_mut(&mut self, handle: &ArenaHandle<T>) -> &mut T {
-        &mut self.data[handle.index as usize]
+    pub fn get_mut(&self, handle: &ArenaHandle<T>) -> &mut T {
+        // FIXME: Implement check for memory safety
+        unsafe {
+            (&self.data[handle.index as usize] as *const T as *mut T).as_mut().unwrap()
+        }
     }
 
     pub fn remove(&mut self, handle: ArenaHandle<T>) {
@@ -74,6 +77,7 @@ impl<
 }
 
 #[repr(C)]
+#[derive(Default, Clone, Copy)]
 pub struct ArenaHandle<T> {
     pub(crate) index: u32,
     _phantom: PhantomData<T>,
@@ -91,7 +95,7 @@ impl<T: Default + Copy> ArenaHandle<T> {
         arena.get(self)
     }
 
-    pub fn get_mut<'a>(&self, arena: &'a mut Arena<T>) -> &'a mut T {
+    pub fn get_mut<'a>(&self, arena: &'a Arena<T>) -> &'a mut T {
         arena.get_mut(self)
     }
 

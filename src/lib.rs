@@ -1,11 +1,11 @@
 pub mod octree;
-pub mod arena;
+mod arena;
 mod utils;
 
 
 #[cfg(test)]
 mod tests {
-    use crate::{utils::first_zero_position, arena::Arena};
+    use crate::{utils::first_zero_position, arena::Arena, octree::Octree};
 
     #[test]
     fn first_zero_position_test() {
@@ -50,5 +50,14 @@ mod tests {
 
         assert!(*handle3.get(&arena) == 30);
         assert!(handle3.index == 0);
+    }
+
+    #[test]
+    fn octree_store_retrive() {
+        let mut octree = Octree::<u16>::new();
+
+        octree.set(10, 20, 30, 56);
+
+        assert!(octree.get(10, 20, 30) == 56);
     }
 }
