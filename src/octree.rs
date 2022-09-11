@@ -156,6 +156,17 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
     pub fn as_slice(&self) -> &[OctreeNode<T>] {
         self.arena.as_slice()
     }
+
+    pub fn as_byte_slice(&self) -> &[u8] {
+        unsafe {
+            let slice = self.as_slice();
+
+            let len = slice.len() * std::mem::size_of::<OctreeNode<T>>();
+            let bytes = std::slice::from_raw_parts(slice.as_ptr() as *const u8, len);
+
+            bytes
+        }
+    }
 }
 
 impl<T: Default + Copy + PartialEq> OctreeNode<T> {
