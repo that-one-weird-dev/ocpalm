@@ -1,11 +1,9 @@
-use std::fmt::Octal;
-
 use crate::arena::{Arena, ArenaHandle};
 
 
 #[repr(C)]
 pub struct Octree<T: Copy> {
-    arena: Arena<OctreeNode<T>>,
+    pub(crate) arena: Arena<OctreeNode<T>>,
     root: ArenaHandle<OctreeNode<T>>,
     max_depth: u32,
 }
@@ -48,6 +46,7 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
         let mut half_size = 1 << (self.max_depth - 2);
 
         let mut current_node = self.root.get_mut(&self.arena);
+        let mut current_node_handle = self.root;
 
         let mut middle_x = 0;
         let mut middle_y = 0;
@@ -59,10 +58,11 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
             let zside = if z < middle_z { -1 } else { 1 };
 
             if current_node.leaf {
-                current_node.subdivide(&self);
+                current_node.subdivide(current_node_handle, &self);
             }
 
-            current_node = current_node.children[((xside + 1) / 2 + (yside + 1) * 2 + (zside + 1)) as usize].get_mut(&self.arena);
+            current_node_handle = current_node.children[((xside + 1) / 2 + (yside + 1) * 2 + (zside + 1)) as usize];
+            current_node = current_node_handle.get_mut(&self.arena);
 
             if half_size == 1 { break }
 
@@ -129,20 +129,20 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
 }
 
 impl<T: Default + Copy + PartialEq> OctreeNode<T> {
-    fn new(value: T) -> Self {
+    fn new_child(parent: ArenaHandle<OctreeNode<T>>, value: T) -> Self {
         Self {
-            parent: Default::default(),
+            parent,
             leaf: true,
             children: Default::default(),
             data: value,
         }
     }
 
-    fn subdivide(&mut self, octree: &Octree<T>) {
+    fn subdivide(&mut self, self_handle: ArenaHandle<OctreeNode<T>>, octree: &Octree<T>) {
         self.leaf = false;
 
         for i in 0..8 {
-            self.children[i] = octree.arena.store(OctreeNode::new(self.data));
+            self.children[i] = octree.arena.store(OctreeNode::new_child(self_handle, self.data));
         }
     }
 
@@ -150,7 +150,9 @@ impl<T: Default + Copy + PartialEq> OctreeNode<T> {
         let first = self.children[0].get(&octree.arena).data;
         
         for i in 1..8 {
-            if self.children[i].get(&octree.arena).data != first {
+            let child_data = self.children[i].get(&octree.arena).data;
+
+            if child_data != first {
                 return false
             }
         }

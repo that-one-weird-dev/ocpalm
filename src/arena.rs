@@ -88,6 +88,22 @@ impl<
 
         self.data.borrow_mut()[handle.index as usize] = T::default();
     }
+
+    pub fn get_allocation_count(&self) -> u32 {
+        let mut count = 0;
+
+        for slot in self.free_space.borrow().iter() {
+            for i in 0..8 {
+                let mask = 1 << i;
+
+                if slot & mask == mask {
+                    count += 1;
+                }
+            }
+        }
+
+        count
+    }
 }
 
 #[repr(C)]
