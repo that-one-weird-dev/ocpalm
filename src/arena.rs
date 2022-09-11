@@ -89,6 +89,7 @@ impl<
         self.data.borrow_mut()[handle.index as usize] = T::default();
     }
 
+    #[allow(dead_code)]
     pub fn get_allocation_count(&self) -> u32 {
         let mut count = 0;
 
@@ -132,21 +133,5 @@ impl<T: Default + Copy> ArenaHandle<T> {
 
     pub fn is_null(&self) -> bool {
         self.index == std::u32::MAX
-    }
-
-    pub fn get<'a>(&self, arena: &'a Arena<T>) -> T {
-        arena.get(self)
-    }
-
-    pub fn get_mut<'a>(&self, arena: &'a Arena<T>) -> &'a mut T {
-        arena.get_mut(self)
-    }
-
-    pub fn set(&self, arena: &mut Arena<T>, new_value: T) {
-        arena.set(self, new_value)
-    }
-
-    pub fn remove(self, arena: &mut Arena<T>) {
-        arena.remove(self)
     }
 }

@@ -20,35 +20,35 @@ mod tests {
         arena.store(20);
         let handle2 = arena.store(30);
 
-        assert!(handle.get(&arena) == 10);
-        assert!(handle2.get(&arena) == 30);
+        assert!(arena.get(&handle) == 10);
+        assert!(arena.get(&handle2) == 30);
     }
 
     #[test]
     fn arena_remove() {
-        let mut arena = Arena::<i32>::new();
+        let arena = Arena::<i32>::new();
 
         let handle = arena.store(10);
         let handle2 = arena.store(20);
         let handle3 = arena.store(30);
 
-        handle2.remove(&mut arena);
-        handle.remove(&mut arena);
+        arena.remove(handle2);
+        arena.remove(handle);
 
-        assert!(handle3.get(&arena) == 30)
+        assert!(arena.get(&handle3) == 30)
     }
 
     #[test]
     fn arena_remove_reinsert() {
-        let mut arena = Arena::<i32>::new();
+        let arena = Arena::<i32>::new();
 
         let handle = arena.store(10);
         arena.store(20);
-        handle.remove(&mut arena);
+        arena.remove(handle);
 
         let handle3 = arena.store(30);
 
-        assert!(handle3.get(&arena) == 30);
+        assert!(arena.get(&handle3) == 30);
         assert!(handle3.index == 0);
     }
 

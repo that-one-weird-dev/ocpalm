@@ -45,7 +45,7 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
         // 2^(max_depth - 1) / 2
         let mut half_size = 1 << (self.max_depth - 2);
 
-        let mut current_node = self.root.get_mut(&self.arena);
+        let mut current_node = self.arena.get_mut(&self.root);
         let mut current_node_handle = self.root;
 
         let mut middle_x = 0;
@@ -62,7 +62,7 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
             }
 
             current_node_handle = current_node.children[((xside + 1) / 2 + (yside + 1) * 2 + (zside + 1)) as usize];
-            current_node = current_node_handle.get_mut(&self.arena);
+            current_node = self.arena.get_mut(&current_node_handle);
 
             if half_size == 1 { break }
 
@@ -80,7 +80,7 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
         loop {
             if current_node.parent.is_null() { break }
 
-            let parent = current_node.parent.get_mut(&self.arena);
+            let parent = self.arena.get_mut(&current_node.parent);
             let compressed = parent.compress_if_possible(&self);
 
             // If it can't compress then stop
@@ -96,7 +96,7 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
         // 2^(max_depth - 1) / 2
         let mut half_size = 1 << (self.max_depth - 2);
 
-        let mut current_node = self.root.get(&self.arena);
+        let mut current_node = self.arena.get(&self.root);
 
         let mut middle_x = 0;
         let mut middle_y = 0;
@@ -111,7 +111,7 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
                 break
             }
 
-            current_node = current_node.children[((xside + 1) / 2 + (yside + 1) * 2 + (zside + 1)) as usize].get(&self.arena);
+            current_node = self.arena.get(&current_node.children[((xside + 1) / 2 + (yside + 1) * 2 + (zside + 1)) as usize]);
 
             if half_size == 1 { break }
 
@@ -147,10 +147,10 @@ impl<T: Default + Copy + PartialEq> OctreeNode<T> {
     }
 
     fn compress_if_possible(&mut self, octree: &Octree<T>) -> bool {
-        let first = self.children[0].get(&octree.arena).data;
+        let first = octree.arena.get(&self.children[0]).data;
         
         for i in 1..8 {
-            let child_data = self.children[i].get(&octree.arena).data;
+            let child_data = octree.arena.get(&self.children[i]).data;
 
             if child_data != first {
                 return false
