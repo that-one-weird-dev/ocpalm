@@ -1,7 +1,8 @@
-pub mod octree;
+mod octree;
 mod arena;
 mod utils;
 
+pub use octree::Octree;
 
 #[cfg(test)]
 mod tests {
