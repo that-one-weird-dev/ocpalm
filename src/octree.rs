@@ -30,7 +30,7 @@ impl<T: Default> Default for OctreeNode<T> {
 
 impl<T: Default + Copy + PartialEq> Octree<T> {
     pub fn new(max_depth: u32) -> Self {
-        let arena = Arena::new();
+        let mut arena = Arena::new();
 
         Self {
             root: arena.store(OctreeNode::default()),
@@ -45,7 +45,6 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
         // 2^(max_depth - 1) / 2
         let mut half_size = 1 << (self.max_depth - 2);
 
-        let mut current_node = self.arena.get_mut(&self.root);
         let mut current_node_handle = self.root;
 
         let mut middle_x = 0;
@@ -57,12 +56,26 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
             let yside = if y < middle_y { -1 } else { 1 };
             let zside = if z < middle_z { -1 } else { 1 };
 
+            let current_node = self.arena.get(&current_node_handle);
             if current_node.leaf {
-                current_node.subdivide(current_node_handle, &self);
+                let data = current_node.data;
+                drop(current_node);
+
+                // Subdivide the node
+                // 1. Create the children
+                let mut children = [ArenaHandle::<OctreeNode<T>>::default(); 8];
+                for i in 0..8 {
+                    children[i] = self.arena.store(OctreeNode::new_child(current_node_handle, data));
+                }
+                // 2. Update the new parent node
+                let current_node = self.arena.get_mut(&current_node_handle);
+                current_node.children = children;
+                current_node.leaf = false;
             }
 
-            current_node_handle = current_node.children[((xside + 1) / 2 + (yside + 1) * 2 + (zside + 1)) as usize];
-            current_node = self.arena.get_mut(&current_node_handle);
+            current_node_handle = self.arena
+                .get_mut(&current_node_handle)
+                .children[((xside + 1) / 2 + (yside + 1) * 2 + (zside + 1)) as usize];
 
             if half_size == 1 { break }
 
@@ -74,19 +87,32 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
         }
 
         // Setting the new value
-        current_node.data = value;
+        self.arena.get_mut(&current_node_handle).data = value;
 
         // Checking if compressable
         loop {
-            if current_node.parent.is_null() { break }
+            let parent_handle = self.arena.get(&current_node_handle).parent;
+            if parent_handle.is_null() { break }
 
-            let parent = self.arena.get_mut(&current_node.parent);
-            let compressed = parent.compress_if_possible(&self);
+            let parent = self.arena.get(&parent_handle);
+            let compressable = parent.is_compressable(&self.arena);
 
             // If it can't compress then stop
-            if !compressed { break }
+            if let None = compressable { break }
 
-            current_node = parent;
+            // Then compress the node
+            // 1. Remove the children
+            for child in parent.children {
+                self.arena.remove(child);
+            }
+            // 2. Update state
+            {
+                let parent = self.arena.get_mut(&parent_handle);
+                parent.leaf = true;
+                parent.data = compressable.unwrap();
+            }
+
+            current_node_handle = parent_handle;
         }
     }
 
@@ -138,33 +164,47 @@ impl<T: Default + Copy + PartialEq> OctreeNode<T> {
         }
     }
 
-    fn subdivide(&mut self, self_handle: ArenaHandle<OctreeNode<T>>, octree: &Octree<T>) {
-        self.leaf = false;
+    // fn subdivide(&mut self, self_handle: ArenaHandle<OctreeNode<T>>, octree: &Octree<T>) {
+    //     self.leaf = false;
 
-        for i in 0..8 {
-            self.children[i] = octree.arena.store(OctreeNode::new_child(self_handle, self.data));
-        }
-    }
+    //     for i in 0..8 {
+    //         self.children[i] = octree.arena.store(OctreeNode::new_child(self_handle, self.data));
+    //     }
+    // }
 
-    fn compress_if_possible(&mut self, octree: &Octree<T>) -> bool {
-        let first = octree.arena.get(&self.children[0]).data;
+    fn is_compressable(&self, arena: &Arena<OctreeNode<T>>) -> Option<T> {
+        let first = arena.get(&self.children[0]).data;
         
         for i in 1..8 {
-            let child_data = octree.arena.get(&self.children[i]).data;
+            let child_data = arena.get(&self.children[i]).data;
 
             if child_data != first {
-                return false
+                return None
             }
         }
 
-        // Otherwise compress
-        for child in self.children {
-            octree.arena.remove(child);
-        }
-
-        self.leaf = true;
-        self.data = first;
-
-        true
+        Some(first)
     }
+
+    // fn compress_if_possible(&mut self, octree: &Octree<T>) -> bool {
+    //     let first = octree.arena.get(&self.children[0]).data;
+        
+    //     for i in 1..8 {
+    //         let child_data = octree.arena.get(&self.children[i]).data;
+
+    //         if child_data != first {
+    //             return false
+    //         }
+    //     }
+
+    //     // Otherwise compress
+    //     for child in self.children {
+    //         octree.arena.remove(child);
+    //     }
+
+    //     self.leaf = true;
+    //     self.data = first;
+
+    //     true
+    // }
 }

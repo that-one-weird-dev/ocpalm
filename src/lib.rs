@@ -14,19 +14,19 @@ mod tests {
 
     #[test]
     fn arena_store_retrive() {
-        let arena = Arena::<i32>::new();
+        let mut arena = Arena::<i32>::new();
 
         let handle = arena.store(10);
         arena.store(20);
         let handle2 = arena.store(30);
 
-        assert!(arena.get(&handle) == 10);
-        assert!(arena.get(&handle2) == 30);
+        assert!(*arena.get(&handle) == 10);
+        assert!(*arena.get(&handle2) == 30);
     }
 
     #[test]
     fn arena_remove() {
-        let arena = Arena::<i32>::new();
+        let mut arena = Arena::<i32>::new();
 
         let handle = arena.store(10);
         let handle2 = arena.store(20);
@@ -35,12 +35,12 @@ mod tests {
         arena.remove(handle2);
         arena.remove(handle);
 
-        assert!(arena.get(&handle3) == 30)
+        assert!(*arena.get(&handle3) == 30)
     }
 
     #[test]
     fn arena_remove_reinsert() {
-        let arena = Arena::<i32>::new();
+        let mut arena = Arena::<i32>::new();
 
         let handle = arena.store(10);
         arena.store(20);
@@ -48,13 +48,13 @@ mod tests {
 
         let handle3 = arena.store(30);
 
-        assert!(arena.get(&handle3) == 30);
+        assert!(*arena.get(&handle3) == 30);
         assert!(handle3.index == 0);
     }
 
     #[test]
     fn arena_alloc_count() {
-        let arena = Arena::<i32>::new();
+        let mut arena = Arena::<i32>::new();
 
         arena.store(10);
         let handle = arena.store(20);

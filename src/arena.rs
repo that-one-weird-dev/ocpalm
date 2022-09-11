@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, cell::RefCell};
+use std::{marker::PhantomData};
 
 use crate::utils::first_zero_position;
 
@@ -8,8 +8,8 @@ pub struct Arena<
     const SIZE: usize = 1024,
     const FREE_SIZE: usize = 128
 > {
-    data: RefCell<[T; SIZE]>,
-    free_space: RefCell<[u8; FREE_SIZE]>,
+    data: [T; SIZE],
+    free_space: [u8; FREE_SIZE],
 }
 
 impl<
@@ -20,16 +20,16 @@ impl<
 
     pub fn new() -> Self {
         Self {
-            data: RefCell::new([T::default(); SIZE]),
-            free_space: RefCell::new([0; FREE_SIZE]),
+            data: [T::default(); SIZE],
+            free_space: [0; FREE_SIZE],
         }
     }
 
-    pub fn store(&self, value: T) -> ArenaHandle<T> {
+    pub fn store(&mut self, value: T) -> ArenaHandle<T> {
         let mut found = false;
         let mut first_free = 0;
 
-        for (i, slot) in self.free_space.borrow_mut().iter_mut().enumerate() {
+        for (i, slot) in self.free_space.iter_mut().enumerate() {
             if *slot == 255 { continue }
 
             let pos = first_zero_position(*slot);
@@ -51,49 +51,48 @@ impl<
         handle
     }
 
-    pub fn set(&self, handle: &ArenaHandle<T>, new_value: T) {
+    pub fn set(&mut self, handle: &ArenaHandle<T>, new_value: T) {
         if handle.is_null() {
             eprintln!("Received null handle, skipping operation (set)");
             return
         }
 
-        self.data.borrow_mut()[handle.index as usize] = new_value;
+        self.data[handle.index as usize] = new_value;
     }
 
-    pub fn get(&self, handle: &ArenaHandle<T>) -> T {
+    pub fn get(&self, handle: &ArenaHandle<T>) -> &T {
         if handle.is_null() {
-            eprintln!("Received null handle, skipping operation (get)");
-            return T::default()
+            panic!("Received null handle, cannot proceed (get)");
         }
 
-        self.data.borrow()[handle.index as usize]
+        &self.data[handle.index as usize]
     }
 
-    pub fn get_mut(&self, handle: &ArenaHandle<T>) -> &mut T {
+    pub fn get_mut(&mut self, handle: &ArenaHandle<T>) -> &mut T {
         if handle.is_null() {
             panic!("Received null handle, cannot proceed (get_mut)")
         }
 
         // FIXME: Implement check for memory safety
         unsafe {
-            (&self.data.borrow()[handle.index as usize] as *const T as *mut T).as_mut().unwrap()
+            (&self.data[handle.index as usize] as *const T as *mut T).as_mut().unwrap()
         }
     }
 
-    pub fn remove(&self, handle: ArenaHandle<T>) {
+    pub fn remove(&mut self, handle: ArenaHandle<T>) {
         let slot = handle.index / 8;
         let pos = handle.index % 8;
 
-        self.free_space.borrow_mut()[slot as usize] -= 2u8.pow(pos as u32);
+        self.free_space[slot as usize] -= 2u8.pow(pos as u32);
 
-        self.data.borrow_mut()[handle.index as usize] = T::default();
+        self.data[handle.index as usize] = T::default();
     }
 
     #[allow(dead_code)]
     pub fn get_allocation_count(&self) -> u32 {
         let mut count = 0;
 
-        for slot in self.free_space.borrow().iter() {
+        for slot in self.free_space.iter() {
             for i in 0..8 {
                 let mask = 1 << i;
 
