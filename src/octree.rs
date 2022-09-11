@@ -148,9 +148,11 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
             middle_z += half_size * zside;
         }
 
-        // Checking if parent is clearable
-
         current_node.data
+    }
+
+    pub fn as_slice(&self) -> &[OctreeNode<T>] {
+        self.arena.as_slice()
     }
 }
 
@@ -163,14 +165,6 @@ impl<T: Default + Copy + PartialEq> OctreeNode<T> {
             data: value,
         }
     }
-
-    // fn subdivide(&mut self, self_handle: ArenaHandle<OctreeNode<T>>, octree: &Octree<T>) {
-    //     self.leaf = false;
-
-    //     for i in 0..8 {
-    //         self.children[i] = octree.arena.store(OctreeNode::new_child(self_handle, self.data));
-    //     }
-    // }
 
     fn is_compressable(&self, arena: &Arena<OctreeNode<T>>) -> Option<T> {
         let first = arena.get(&self.children[0]).data;
@@ -185,26 +179,4 @@ impl<T: Default + Copy + PartialEq> OctreeNode<T> {
 
         Some(first)
     }
-
-    // fn compress_if_possible(&mut self, octree: &Octree<T>) -> bool {
-    //     let first = octree.arena.get(&self.children[0]).data;
-        
-    //     for i in 1..8 {
-    //         let child_data = octree.arena.get(&self.children[i]).data;
-
-    //         if child_data != first {
-    //             return false
-    //         }
-    //     }
-
-    //     // Otherwise compress
-    //     for child in self.children {
-    //         octree.arena.remove(child);
-    //     }
-
-    //     self.leaf = true;
-    //     self.data = first;
-
-    //     true
-    // }
 }

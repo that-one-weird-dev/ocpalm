@@ -1,4 +1,4 @@
-use std::{marker::PhantomData};
+use std::marker::PhantomData;
 
 use crate::utils::first_zero_position;
 
@@ -86,6 +86,10 @@ impl<
         self.free_space[slot as usize] -= 2u8.pow(pos as u32);
 
         self.data[handle.index as usize] = T::default();
+    }
+
+    pub fn as_slice(&self) -> &[T] {
+        self.data.as_slice()
     }
 
     #[allow(dead_code)]
