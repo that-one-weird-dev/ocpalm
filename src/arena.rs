@@ -73,10 +73,7 @@ impl<
             panic!("Received null handle, cannot proceed (get_mut)")
         }
 
-        // FIXME: Implement check for memory safety
-        unsafe {
-            (&self.data[handle.index as usize] as *const T as *mut T).as_mut().unwrap()
-        }
+        &mut self.data[handle.index as usize]
     }
 
     pub fn remove(&mut self, handle: ArenaHandle<T>) {
