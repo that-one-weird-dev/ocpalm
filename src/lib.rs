@@ -1,7 +1,8 @@
-pub mod octree;
+mod octree;
 mod arena;
 mod utils;
 
+pub use octree::Octree;
 
 #[cfg(test)]
 mod tests {
@@ -95,5 +96,12 @@ mod tests {
         octree.set(0, 0, 1, 10);
 
         assert!(octree.arena.get_allocation_count() == 9);
+    }
+
+    #[test]
+    fn as_bytes_slice() {
+        let octree = Octree::<u32>::new(4);
+
+        octree.as_byte_slice();
     }
 }

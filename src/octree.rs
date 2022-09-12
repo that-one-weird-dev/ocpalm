@@ -12,7 +12,6 @@ pub struct Octree<T: Copy> {
 #[derive(Clone, Copy)]
 pub struct OctreeNode<T> {
     parent: ArenaHandle<OctreeNode<T>>,
-    leaf: bool,
     children: [ArenaHandle<OctreeNode<T>>; 8],
     data: T,
 }
@@ -21,7 +20,6 @@ impl<T: Default> Default for OctreeNode<T> {
     fn default() -> Self {
         Self {
             parent: Default::default(),
-            leaf: true,
             children: Default::default(),
             data: T::default(),
         }
@@ -39,7 +37,7 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
         }
     }
 
-    pub fn set(&mut self, x: i32, y: i32, z: i32, value: T) {
+    pub fn set(&mut self, mut x: i32, mut y: i32, mut z: i32, value: T) {
         // TODO: Assert coords are inside the bounds
 
         // 2^(max_depth - 1) / 2
@@ -47,17 +45,24 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
 
         let mut current_node_handle = self.root;
 
-        let mut middle_x = 0;
-        let mut middle_y = 0;
-        let mut middle_z = 0;
-
         loop {
-            let xside = if x < middle_x { -1 } else { 1 };
-            let yside = if y < middle_y { -1 } else { 1 };
-            let zside = if z < middle_z { -1 } else { 1 };
+            let mut index = 0;
+
+            if x >= half_size {
+                index |= 0b100;
+                x -= half_size;
+            }
+            if y >= half_size {
+                index |= 0b010;
+                y -= half_size;
+            }
+            if z >= half_size {
+                index |= 0b001;
+                z -= half_size;
+            }
 
             let current_node = self.arena.get(&current_node_handle);
-            if current_node.leaf {
+            if current_node.leaf() {
                 let data = current_node.data;
                 drop(current_node);
 
@@ -70,20 +75,15 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
                 // 2. Update the new parent node
                 let current_node = self.arena.get_mut(&current_node_handle);
                 current_node.children = children;
-                current_node.leaf = false;
             }
 
             current_node_handle = self.arena
                 .get_mut(&current_node_handle)
-                .children[((xside + 1) / 2 + (yside + 1) * 2 + (zside + 1)) as usize];
+                .children[index];
 
             if half_size == 1 { break }
 
             half_size /= 2;
-
-            middle_x += half_size * xside;
-            middle_y += half_size * yside;
-            middle_z += half_size * zside;
         }
 
         // Setting the new value
@@ -108,7 +108,6 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
             // 2. Update state
             {
                 let parent = self.arena.get_mut(&parent_handle);
-                parent.leaf = true;
                 parent.data = compressable.unwrap();
             }
 
@@ -116,7 +115,7 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
         }
     }
 
-    pub fn get(&self, x: i32, y: i32, z: i32) -> T {
+    pub fn get(&self, mut x: i32, mut y: i32, mut z: i32) -> T {
         // TODO: Assert coords are inside the bounds
 
         // 2^(max_depth - 1) / 2
@@ -124,28 +123,31 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
 
         let mut current_node = self.arena.get(&self.root);
 
-        let mut middle_x = 0;
-        let mut middle_y = 0;
-        let mut middle_z = 0;
-
         loop {
-            let xside = if x < middle_x { -1 } else { 1 };
-            let yside = if y < middle_y { -1 } else { 1 };
-            let zside = if z < middle_z { -1 } else { 1 };
+            let mut index = 0;
 
-            if current_node.leaf {
+            if x >= half_size {
+                index |= 0b100;
+                x -= half_size;
+            }
+            if y >= half_size {
+                index |= 0b010;
+                y -= half_size;
+            }
+            if z >= half_size {
+                index |= 0b001;
+                z -= half_size;
+            }
+
+            if current_node.leaf() {
                 break
             }
 
-            current_node = self.arena.get(&current_node.children[((xside + 1) / 2 + (yside + 1) * 2 + (zside + 1)) as usize]);
+            current_node = self.arena.get(&current_node.children[index]);
 
             if half_size == 1 { break }
 
             half_size /= 2;
-
-            middle_x += half_size * xside;
-            middle_y += half_size * yside;
-            middle_z += half_size * zside;
         }
 
         current_node.data
@@ -154,16 +156,31 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
     pub fn as_slice(&self) -> &[OctreeNode<T>] {
         self.arena.as_slice()
     }
+
+    pub fn as_byte_slice(&self) -> &[u8] {
+        unsafe {
+            let slice = self.as_slice();
+
+            let len = slice.len() * std::mem::size_of::<OctreeNode<T>>();
+            let bytes = std::slice::from_raw_parts(slice.as_ptr() as *const u8, len);
+
+            bytes
+        }
+    }
 }
 
 impl<T: Default + Copy + PartialEq> OctreeNode<T> {
     fn new_child(parent: ArenaHandle<OctreeNode<T>>, value: T) -> Self {
         Self {
             parent,
-            leaf: true,
             children: Default::default(),
             data: value,
         }
+    }
+
+    #[inline]
+    fn leaf(&self) -> bool {
+        self.children[0].is_null()
     }
 
     fn is_compressable(&self, arena: &Arena<OctreeNode<T>>) -> Option<T> {
