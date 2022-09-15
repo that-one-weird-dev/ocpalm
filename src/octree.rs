@@ -41,30 +41,41 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
         // TODO: Assert coords are inside the bounds
 
         // 2^(max_depth - 1) / 2
-        let mut half_size = 1 << (self.max_depth - 2);
+        let mut size = 1 << (self.max_depth - 1);
+        let mut half_size = size / 2;
 
         let mut current_node_handle = self.root;
 
         loop {
+            if size == 1 { break }
+
+            size /= 2;
+            half_size /= 2;
+
             let mut index = 0;
 
-            if x >= half_size {
+            if x >= 0 {
                 index |= 0b100;
                 x -= half_size;
+            } else {
+                x += half_size;
             }
-            if y >= half_size {
+            if y >= 0 {
                 index |= 0b010;
                 y -= half_size;
+            } else {
+                y += half_size;
             }
-            if z >= half_size {
+            if z >= 0 {
                 index |= 0b001;
                 z -= half_size;
+            } else {
+                z += half_size;
             }
 
             let current_node = self.arena.get(&current_node_handle);
             if current_node.leaf() {
                 let data = current_node.data;
-                drop(current_node);
 
                 // Subdivide the node
                 // 1. Create the children
@@ -80,10 +91,6 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
             current_node_handle = self.arena
                 .get_mut(&current_node_handle)
                 .children[index];
-
-            if half_size == 1 { break }
-
-            half_size /= 2;
         }
 
         // Setting the new value
@@ -118,25 +125,36 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
     pub fn get(&self, mut x: i32, mut y: i32, mut z: i32) -> T {
         // TODO: Assert coords are inside the bounds
 
-        // 2^(max_depth - 1) / 2
-        let mut half_size = 1 << (self.max_depth - 2);
+        let mut size = 1 << (self.max_depth - 1);
+        let mut half_size = size / 2;
 
         let mut current_node = self.arena.get(&self.root);
 
         loop {
+            if size == 1 { break }
+
+            size /= 2;
+            half_size /= 2;
+
             let mut index = 0;
 
-            if x >= half_size {
+            if x >= 0 {
                 index |= 0b100;
                 x -= half_size;
+            } else {
+                x += half_size;
             }
-            if y >= half_size {
+            if y >= 0 {
                 index |= 0b010;
                 y -= half_size;
+            } else {
+                y += half_size;
             }
-            if z >= half_size {
+            if z >= 0 {
                 index |= 0b001;
                 z -= half_size;
+            } else {
+                z += half_size;
             }
 
             if current_node.leaf() {
@@ -144,10 +162,6 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
             }
 
             current_node = self.arena.get(&current_node.children[index]);
-
-            if half_size == 1 { break }
-
-            half_size /= 2;
         }
 
         current_node.data
