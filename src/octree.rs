@@ -11,8 +11,8 @@ pub struct Octree<T: Copy> {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct OctreeNode<T> {
-    parent: ArenaHandle<OctreeNode<T>>,
     children: [ArenaHandle<OctreeNode<T>>; 8],
+    parent: ArenaHandle<OctreeNode<T>>,
     data: T,
 }
 

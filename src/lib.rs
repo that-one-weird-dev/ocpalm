@@ -6,7 +6,7 @@ pub use octree::Octree;
 
 #[cfg(test)]
 mod tests {
-    use crate::{utils::first_zero_position, arena::Arena, octree::Octree};
+    use crate::{utils::first_zero_position, arena::Arena, octree::{Octree, OctreeNode}};
 
     #[test]
     fn first_zero_position_test() {
@@ -103,5 +103,10 @@ mod tests {
         let octree = Octree::<u32>::new(4);
 
         octree.as_byte_slice();
+    }
+
+    #[test]
+    fn memory_alignment() {
+        assert_eq!(std::mem::size_of::<OctreeNode<u32>>(), 40);
     }
 }
