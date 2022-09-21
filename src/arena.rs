@@ -5,8 +5,8 @@ use crate::utils::first_zero_position;
 
 pub struct Arena<
     T: Copy,
-    const SIZE: usize = 1024,
-    const FREE_SIZE: usize = 128
+    const SIZE: usize = 12000000,
+    const FREE_SIZE: usize = 1500000,
 > {
     data: [T; SIZE],
     free_space: [u8; FREE_SIZE],
