@@ -5,11 +5,11 @@ use crate::utils::first_zero_position;
 
 pub struct Arena<
     T: Copy,
-    const SIZE: usize = 12000000,
-    const FREE_SIZE: usize = 1500000,
+    const SIZE: usize = 3355440,
+    const FREE_SIZE: usize = 419430,
 > {
-    data: [T; SIZE],
-    free_space: [u8; FREE_SIZE],
+    data: Box<[T]>,
+    free_space: Box<[u8]>,
 }
 
 impl<
@@ -20,8 +20,8 @@ impl<
 
     pub fn new() -> Self {
         Self {
-            data: [T::default(); SIZE],
-            free_space: [0; FREE_SIZE],
+            data: vec![T::default(); SIZE].into_boxed_slice(),
+            free_space: vec![0; FREE_SIZE].into_boxed_slice(),
         }
     }
 
@@ -86,7 +86,7 @@ impl<
     }
 
     pub fn as_slice(&self) -> &[T] {
-        self.data.as_slice()
+        &self.data
     }
 
     #[allow(dead_code)]
