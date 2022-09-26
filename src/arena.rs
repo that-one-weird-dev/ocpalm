@@ -6,7 +6,9 @@ use crate::utils::first_zero_position;
 pub struct Arena<
     T: Copy,
     const SIZE: usize = 26208,
+    const OFFSET: usize = 1,
     const FREE_SIZE: usize = 3276,
+    const FREE_OFFSET: usize = 2,
 > {
     data: Box<[T]>,
     free_space: Box<[u8]>,
@@ -15,14 +17,42 @@ pub struct Arena<
 impl<
     T: Default + Copy,
     const SIZE: usize,
-    const FREE_SIZE: usize
-> Arena<T, SIZE, FREE_SIZE> {
+    const OFFSET: usize,
+    const FREE_SIZE: usize,
+    const FREE_OFFSET: usize,
+> Arena<T, SIZE, OFFSET, FREE_SIZE, FREE_OFFSET> {
 
     pub fn new() -> Self {
         Self {
             data: vec![T::default(); SIZE].into_boxed_slice(),
             free_space: vec![0; FREE_SIZE].into_boxed_slice(),
         }
+    }
+
+    pub fn store_8_aligned(&mut self, values: [T; 8]) -> ArenaHandle<T> {
+        let mut found = false;
+        let mut first_free = 0;
+
+        for (i, slot) in self.free_space.iter_mut().enumerate() {
+            if *slot != 0 { continue }
+
+            *slot = 255;
+
+            first_free = i * 8;
+            found = true;
+
+            break
+        }
+
+        if !found { todo!("Increment space") }
+
+        let handle = ArenaHandle::new(first_free as u32 + FREE_OFFSET as u32);
+
+        for i in 0..8 {
+            self.set(&handle.index(i), values[i as usize]);
+        }
+
+        handle
     }
 
     pub fn store(&mut self, value: T) -> ArenaHandle<T> {
@@ -44,7 +74,7 @@ impl<
 
         if !found { todo!("Increment space") }
 
-        let handle = ArenaHandle::new(first_free as u32);
+        let handle = ArenaHandle::new(first_free as u32 + FREE_OFFSET as u32);
 
         self.set(&handle, value);
 
@@ -57,7 +87,7 @@ impl<
             return
         }
 
-        self.data[handle.index as usize] = new_value;
+        self.data[handle.index as usize - OFFSET] = new_value;
     }
 
     pub fn get(&self, handle: &ArenaHandle<T>) -> &T {
@@ -65,7 +95,7 @@ impl<
             panic!("Received null handle, cannot proceed (get)");
         }
 
-        &self.data[handle.index as usize]
+        &self.data[handle.index as usize - OFFSET]
     }
 
     pub fn get_mut(&mut self, handle: &ArenaHandle<T>) -> &mut T {
@@ -73,16 +103,28 @@ impl<
             panic!("Received null handle, cannot proceed (get_mut)")
         }
 
-        &mut self.data[handle.index as usize]
+        &mut self.data[handle.index as usize - OFFSET]
+    }
+
+    pub fn remove_8_aligned(&mut self, handle: ArenaHandle<T>) {
+        let slot = (handle.index as usize - FREE_OFFSET) / 8;
+
+        self.free_space[slot] = 0;
+
+        let index = 8 * slot;
+
+        for i in 0..8 {
+            self.data[index + i] = T::default();
+        }
     }
 
     pub fn remove(&mut self, handle: ArenaHandle<T>) {
-        let slot = handle.index / 8;
-        let pos = handle.index % 8;
+        let slot = (handle.index - FREE_OFFSET as u32) / 8;
+        let pos = (handle.index - FREE_OFFSET as u32) % 8;
 
         self.free_space[slot as usize] -= 2u8.pow(pos as u32);
 
-        self.data[handle.index as usize] = T::default();
+        self.data[handle.index as usize - OFFSET] = T::default();
     }
 
     pub fn as_slice(&self) -> &[T] {
@@ -90,6 +132,8 @@ impl<
     }
 
     #[allow(dead_code)]
+    /// Returns the number of allocations inside the arena.
+    /// WARNING: It does not count the value at position 1 (the root in the case of the octree)
     pub fn get_allocation_count(&self) -> u32 {
         let mut count = 0;
 
@@ -124,11 +168,15 @@ impl<T> Default for ArenaHandle<T> {
 }
 
 impl<T: Default + Copy> ArenaHandle<T> {
-    fn new(index: u32) -> Self {
+    pub(crate) fn new(index: u32) -> Self {
         Self {
             index,
             _phantom: PhantomData::default(),
         }
+    }
+
+    pub fn index(&self, offset: u32) -> Self {
+        Self::new(self.index + offset)
     }
 
     pub fn is_null(&self) -> bool {

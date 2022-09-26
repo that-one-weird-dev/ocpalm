@@ -30,8 +30,11 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
     pub fn new(max_depth: u32) -> Self {
         let mut arena = Arena::new();
 
+        let handle = ArenaHandle::new(1);
+        arena.set(&handle, OctreeNode::default());
+
         Self {
-            root: arena.store(OctreeNode::default()),
+            root: handle,
             arena,
             max_depth,
         }
