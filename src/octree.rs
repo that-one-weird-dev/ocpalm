@@ -11,7 +11,7 @@ pub struct Octree<T: Copy> {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct OctreeNode<T> {
-    children: [ArenaHandle<OctreeNode<T>>; 8],
+    children: ArenaHandle<OctreeNode<T>>,
     parent: ArenaHandle<OctreeNode<T>>,
     data: T,
 }
@@ -82,18 +82,17 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
 
                 // Subdivide the node
                 // 1. Create the children
-                let mut children = [ArenaHandle::<OctreeNode<T>>::default(); 8];
-                for i in 0..8 {
-                    children[i] = self.arena.store(OctreeNode::new_child(current_node_handle, data));
-                }
+                let children = self.arena.store_8_aligned([OctreeNode::new_child(current_node_handle, data); 8]);
+
                 // 2. Update the new parent node
                 let current_node = self.arena.get_mut(&current_node_handle);
+
                 current_node.children = children;
             }
 
             current_node_handle = self.arena
                 .get_mut(&current_node_handle)
-                .children[index];
+                .children.index(index);
         }
 
         // Setting the new value
@@ -112,9 +111,8 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
 
             // Then compress the node
             // 1. Remove the children
-            for child in parent.children {
-                self.arena.remove(child);
-            }
+            self.arena.remove_8_aligned(parent.children);
+
             // 2. Update state
             {
                 let parent = self.arena.get_mut(&parent_handle);
@@ -164,7 +162,7 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
                 break
             }
 
-            current_node = self.arena.get(&current_node.children[index]);
+            current_node = self.arena.get(&current_node.children.index(index));
         }
 
         current_node.data
@@ -197,14 +195,14 @@ impl<T: Default + Copy + PartialEq> OctreeNode<T> {
 
     #[inline]
     fn leaf(&self) -> bool {
-        self.children[0].is_null()
+        self.children.is_null()
     }
 
     fn is_compressable(&self, arena: &Arena<OctreeNode<T>>) -> Option<T> {
-        let first = arena.get(&self.children[0]).data;
+        let first = arena.get(&self.children.index(0)).data;
         
         for i in 1..8 {
-            let child_data = arena.get(&self.children[i]).data;
+            let child_data = arena.get(&self.children.index(i)).data;
 
             if child_data != first {
                 return None

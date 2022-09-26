@@ -55,6 +55,7 @@ impl<
         handle
     }
 
+    #[allow(dead_code)]
     pub fn store(&mut self, value: T) -> ArenaHandle<T> {
         let mut found = false;
         let mut first_free = 0;
@@ -118,6 +119,7 @@ impl<
         }
     }
 
+    #[allow(dead_code)]
     pub fn remove(&mut self, handle: ArenaHandle<T>) {
         let slot = (handle.index - FREE_OFFSET as u32) / 8;
         let pos = (handle.index - FREE_OFFSET as u32) % 8;
@@ -152,19 +154,10 @@ impl<
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct ArenaHandle<T> {
     pub(crate) index: u32,
     _phantom: PhantomData<T>,
-}
-
-impl<T> Default for ArenaHandle<T> {
-    fn default() -> Self {
-        Self {
-            index: std::u32::MAX,
-            _phantom: Default::default(),
-        }
-    }
 }
 
 impl<T: Default + Copy> ArenaHandle<T> {
@@ -180,6 +173,6 @@ impl<T: Default + Copy> ArenaHandle<T> {
     }
 
     pub fn is_null(&self) -> bool {
-        self.index == std::u32::MAX
+        self.index == 0
     }
 }

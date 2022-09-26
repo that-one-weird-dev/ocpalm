@@ -156,6 +156,6 @@ mod tests {
 
     #[test]
     fn memory_alignment() {
-        assert_eq!(std::mem::size_of::<OctreeNode<u32>>(), 40);
+        assert_eq!(std::mem::size_of::<OctreeNode<u32>>(), 12);
     }
 }
