@@ -5,9 +5,9 @@ use crate::utils::first_zero_position;
 
 pub struct Arena<
     T: Copy,
-    const SIZE: usize = 26208,
+    const SIZE: usize = 419329,
     const OFFSET: usize = 1,
-    const FREE_SIZE: usize = 3276,
+    const FREE_SIZE: usize = 52416,
     const FREE_OFFSET: usize = 2,
 > {
     data: Box<[T]>,
@@ -111,12 +111,6 @@ impl<
         let slot = (handle.index as usize - FREE_OFFSET) / 8;
 
         self.free_space[slot] = 0;
-
-        let index = 8 * slot;
-
-        for i in 0..8 {
-            self.data[index + i] = T::default();
-        }
     }
 
     #[allow(dead_code)]

@@ -116,6 +116,7 @@ impl<T: Default + Copy + PartialEq> Octree<T> {
             // 2. Update state
             {
                 let parent = self.arena.get_mut(&parent_handle);
+                parent.children = ArenaHandle::default();
                 parent.data = compressable.unwrap();
             }
 
