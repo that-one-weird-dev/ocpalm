@@ -200,12 +200,15 @@ impl<T: Default + Copy + PartialEq> OctreeNode<T> {
     }
 
     fn is_compressable(&self, arena: &Arena<OctreeNode<T>>) -> Option<T> {
-        let first = arena.get(&self.children.index(0)).data;
+        let child1 = arena.get(&self.children.index(0));
+        if !child1.leaf() { return None }
+
+        let first = child1.data;
         
         for i in 1..8 {
-            let child_data = arena.get(&self.children.index(i)).data;
+            let child = arena.get(&self.children.index(i));
 
-            if child_data != first {
+            if child.data != first || !child.leaf() {
                 return None
             }
         }
