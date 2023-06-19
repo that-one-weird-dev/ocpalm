@@ -1,12 +1,16 @@
-mod octree;
 mod arena;
+mod octree;
 mod utils;
 
 pub use octree::Octree;
 
 #[cfg(test)]
 mod tests {
-    use crate::{utils::first_zero_position, arena::Arena, octree::{Octree, OctreeNode}};
+    use crate::{
+        arena::Arena,
+        octree::{Octree, OctreeNode},
+        utils::first_zero_position,
+    };
 
     #[test]
     fn first_zero_position_test() {
@@ -30,7 +34,7 @@ mod tests {
         let mut arena = Arena::<i32>::new();
 
         let handle = arena.store_8_aligned([1, 2, 3, 4, 5, 6, 7, 8]);
-        arena.store_8_aligned([4, 3, 5, 6, 3, 0 , 4, 3]);
+        arena.store_8_aligned([4, 3, 5, 6, 3, 0, 4, 3]);
         let handle2 = arena.store_8_aligned([5, 6, 5, 6, 8, 5, 2, 7]);
 
         assert_eq!(*arena.get(&handle), 1);
